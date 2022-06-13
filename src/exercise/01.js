@@ -4,23 +4,32 @@
 import * as React from 'react'
 import {fetchPokemon, PokemonDataView, PokemonErrorBoundary} from '../pokemon'
 
-let pokemon
-let pokemonError
-// We don't need the app to be mounted to know that we want to fetch the pokemon
-// named "pikachu" so we can go ahead and do that right here.
-const pokemonPromise = fetchPokemon('pikacha').then(
-  pokemonData => (pokemon = pokemonData),
-  error => (pokemonError = error),
-)
+function createResource(promise) {
+  let status = 'pending'
+  let result = promise.then(
+    resolved => {
+      status = 'success'
+      result = resolved
+    },
+    rejected => {
+      status = 'error'
+      result = rejected
+    },
+  )
+  return {
+    read() {
+      if (status === 'pending') throw result
+      if (status === 'error') throw result
+      if (status === 'success') return result
+      throw new Error('This should be impossible')
+    },
+  }
+}
+
+let pokemonResource = createResource(fetchPokemon('pikachu'))
 
 function PokemonInfo() {
-  if (pokemonError) {
-    throw pokemonError
-  }
-
-  if (!pokemon) {
-    throw pokemonPromise
-  }
+  const pokemon = pokemonResource.read()
   // if the code gets it this far, then the pokemon variable is defined and
   // rendering can continue!
   return (
